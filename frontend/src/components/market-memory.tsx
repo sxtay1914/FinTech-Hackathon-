@@ -8,9 +8,10 @@ interface MarketMemoryProps {
   precedents: HistoricalPrecedent[];
   selected: HistoricalPrecedent | null;
   onSelect: (p: HistoricalPrecedent) => void;
+  predictedImpact?: string;
 }
 
-export function MarketMemory({ precedents, selected, onSelect }: MarketMemoryProps) {
+export function MarketMemory({ precedents, selected, onSelect, predictedImpact }: MarketMemoryProps) {
   if (!precedents.length) return null;
 
   return (
@@ -70,6 +71,40 @@ export function MarketMemory({ precedents, selected, onSelect }: MarketMemoryPro
             </div>
           );
         })}
+
+        {/* NOW → Predicted Impact card */}
+        {predictedImpact && (
+          <>
+            {/* Arrow connector between history and prediction */}
+            <div className="relative flex shrink-0 items-center px-1 pt-3">
+              <div className="flex flex-col items-center gap-1">
+                <div className="h-px w-8 bg-amber-500/40" />
+                <span className="text-[9px] font-semibold uppercase tracking-widest text-amber-500/70">now</span>
+              </div>
+            </div>
+
+            <div className="relative min-w-[260px] max-w-[300px] shrink-0">
+              {/* Pulsing amber dot */}
+              <div className="absolute -top-3 left-6 z-10 h-3.5 w-3.5 rounded-full border-2 border-amber-400 bg-amber-400/20">
+                <div className="absolute inset-0 animate-ping rounded-full bg-amber-400/30" />
+              </div>
+              <Card className="border-amber-500/30 bg-card ring-1 ring-amber-500/20">
+                <CardContent className="p-4 pt-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                      <span className="text-xs font-semibold text-amber-400">Predicted Impact</span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">3–6 months</span>
+                  </div>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                    {predictedImpact}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

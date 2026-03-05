@@ -69,6 +69,7 @@ class LLMAnalysis(BaseModel):
     globe_points: list[GlobePoint]
     historical_precedents: list[HistoricalPrecedent]
     actions: list[ActionItem]
+    predicted_impact: str  # forward-looking prediction based on historical patterns
 
 
 # --- API response schemas ---
@@ -79,6 +80,8 @@ class EventListItem(BaseModel):
     summary: str
     country: str
     country_code: str
+    lat: float
+    lng: float
     theme: str
     heat: str
     opportunity_impact: int
@@ -106,6 +109,7 @@ class EventDetail(BaseModel):
     globe_points: list[GlobePoint]
     historical_precedents: list[HistoricalPrecedent]
     actions: list[ActionItem]
+    predicted_impact: str = ""
     published_date: str
     source: str
 
@@ -116,6 +120,9 @@ class ActionListItem(BaseModel):
     id: int
     event_id: int
     event_headline: str
+    event_country: str
+    event_theme: str
+    event_published_date: str
     action: str
     asset_class: str
     direction: str

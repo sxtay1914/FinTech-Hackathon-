@@ -34,6 +34,9 @@ export interface ActionItem {
   id: number;
   event_id: number;
   event_headline: string;
+  event_country: string;
+  event_theme: string;
+  event_published_date: string;
   action: string;
   asset_class: string;
   direction: string;
@@ -49,6 +52,8 @@ export interface EventListItem {
   summary: string;
   country: string;
   country_code: string;
+  lat: number;
+  lng: number;
   theme: string;
   heat: string;
   opportunity_impact: number;
@@ -74,6 +79,7 @@ export interface EventDetail {
   globe_points: GlobePoint[];
   historical_precedents: HistoricalPrecedent[];
   actions: ActionItem[];
+  predicted_impact: string;
   published_date: string;
   source: string;
 }

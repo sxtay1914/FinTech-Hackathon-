@@ -1,12 +1,16 @@
 import json
+import logging
 from openai import OpenAI
 
 from backend.config import OPENAI_API_KEY
 from backend.schemas import LLMAnalysis
+from backend.imf_data import get_crisis_periods
+from backend.market_data import enrich_with_market_data, build_grounding_context
 
+logger = logging.getLogger(__name__)
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-SYSTEM_PROMPT = """You are a senior macro economist and portfolio strategist at a global asset management firm.
+BASE_SYSTEM_PROMPT = """You are a senior macro economist and portfolio strategist at a global asset management firm.
 Analyze the given news article and produce a structured analysis for an institutional investment platform.
 
 Your analysis must be thorough, actionable, and suitable for professional asset managers.
@@ -25,6 +29,8 @@ Each precedent MUST include:
 For actions: recommend 2-4 specific portfolio actions with clear rationale.
 
 For risk_chain: provide a 3-5 step causal chain showing how this event propagates through the global economy.
+
+For predicted_impact: based on the historical precedents and the current event, write 1-2 sentences predicting the most likely market impact over the next 3-6 months. Be specific — name asset classes, directional moves, and magnitude where possible (e.g. "Expect 10Y Treasury yields to rise 50-75bps; USD likely to strengthen 3-5% vs EM currencies as risk-off accelerates").
 
 Key coordinate reference:
 - New York: 40.7128, -74.0060
@@ -49,13 +55,88 @@ Key coordinate reference:
 - Hanoi: 21.0285, 105.8542"""
 
 
+# Keyword-based country/theme inference — used to fetch grounding context
+# before the LLM determines the final values from the full article.
+_COUNTRY_KEYWORDS = {
+    "US": ["united states", "federal reserve", "fed ", "us inflation", "us gdp", "wall street", "treasury"],
+    "GB": ["uk ", " uk ", "britain", "bank of england", "sterling", "ftse", "london"],
+    "DE": ["germany", "german", "ecb", "eurozone", "bundesbank", "frankfurt"],
+    "JP": ["japan", "boj", "bank of japan", "nikkei", "yen", "tokyo"],
+    "CN": ["china", "pboc", "yuan", "renminbi", "beijing", "shanghai"],
+    "IN": ["india", "rbi", "reserve bank of india", "rupee", "sensex", "mumbai"],
+    "BR": ["brazil", "selic", "real ", "bovespa", "são paulo"],
+    "KR": ["south korea", "korea", "won ", "kospi", "samsung", "sk hynix"],
+    "AU": ["australia", "rba", "reserve bank of australia", "asx"],
+    "TR": ["turkey", "turkish", "lira", "erdogan", "ankara"],
+    "AR": ["argentina", "peso ", "milei", "buenos aires"],
+    "SA": ["saudi", "aramco", "riyadh", "opec"],
+    "MX": ["mexico", "banxico", "peso ", "nearshoring"],
+    "ID": ["indonesia", "nickel", "jakarta", "rupiah"],
+    "CA": ["canada", "bank of canada", "loonie", "toronto"],
+    "CH": ["swiss", "snb", "swiss national bank", "zurich", "franc"],
+    "NG": ["nigeria", "naira", "abuja"],
+    "VN": ["vietnam", "hanoi", "dong "],
+}
+
+_THEME_KEYWORDS = {
+    "Inflation":       ["inflation", "cpi", "price", "stagflation"],
+    "Monetary Policy": ["rate", "cut", "hike", "fed", "ecb", "boj", "central bank", "basis point", "bps"],
+    "Fiscal":          ["stimulus", "debt", "deficit", "budget", "fund", "sovereign", "imf"],
+    "Trade":           ["tariff", "trade", "export", "import", "semiconductor", "carbon", "supply chain"],
+    "Geopolitical":    ["tension", "war", "conflict", "oil", "sanction", "strait"],
+    "Growth":          ["gdp", "recession", "growth", "contraction", "pmi", "unemployment"],
+}
+
+
+def _infer_context(title: str, body: str) -> tuple[str, str]:
+    """
+    Quick keyword scan to infer country ISO2 code and theme before calling the LLM.
+    Used only to fetch grounding data — the LLM determines final values.
+    """
+    text = (title + " " + body[:300]).lower()
+
+    country_code = "US"
+    for iso2, keywords in _COUNTRY_KEYWORDS.items():
+        if any(kw in text for kw in keywords):
+            country_code = iso2
+            break
+
+    theme = "Growth"
+    for t, keywords in _THEME_KEYWORDS.items():
+        if any(kw in text for kw in keywords):
+            theme = t
+            break
+
+    return country_code, theme
+
+
+def _build_grounded_system_prompt(title: str, body: str) -> str:
+    """
+    Builds the full system prompt with real IMF + yfinance grounding context
+    injected for the inferred country and theme.
+    """
+    country_code, theme = _infer_context(title, body)
+    try:
+        crisis_periods = get_crisis_periods(country_code, theme, n=3)
+        enriched = enrich_with_market_data(crisis_periods)
+        grounding = build_grounding_context(enriched)
+    except Exception as e:
+        logger.warning(f"Failed to build grounding context: {e}")
+        grounding = ""
+
+    if grounding:
+        return BASE_SYSTEM_PROMPT + "\n\n" + grounding
+    return BASE_SYSTEM_PROMPT
+
+
 def analyze_article(title: str, body: str) -> LLMAnalysis:
     prompt = f"Article Title: {title}\n\nArticle Body: {body}"
+    system_prompt = _build_grounded_system_prompt(title, body)
 
     response = client.beta.chat.completions.parse(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt},
         ],
         response_format=LLMAnalysis,
@@ -299,6 +380,14 @@ def generate_fallback(title: str, body: str, index: int) -> LLMAnalysis:
             ActionItem(action=f"Consider hedging {country} exposure", asset_class="FX", direction="Hedge", rationale="Currency volatility likely to increase", opportunity_impact=max(1, opp - 1), portfolio_impact=port, urgency="Short-term"),
             ActionItem(action="Increase allocation to safe havens", asset_class="Fixed Income", direction="Buy", rationale="Risk-off sentiment favors quality bonds", opportunity_impact=3, portfolio_impact=3, urgency="Medium-term"),
         ],
+        predicted_impact={
+            "Monetary Policy": f"Expect bond yields to reprice 30-60bps over the next quarter as markets adjust rate expectations. {country} currency likely to see 2-4% move versus USD depending on policy divergence.",
+            "Inflation": f"Sustained inflationary pressure likely to keep central banks hawkish for 2-3 more quarters. Expect real yields to compress and inflation-linked assets to outperform.",
+            "Growth": f"Downside growth risks suggest defensive rotation — quality equities and investment-grade credit likely to outperform cyclicals by 5-8% over the next 6 months.",
+            "Fiscal": f"Rising sovereign risk premium expected — watch for spread widening of 40-80bps on {country} debt. Currency weakness of 3-6% likely if fiscal trajectory worsens.",
+            "Trade": f"Supply chain disruption likely to persist 3-6 months, pushing input costs up 5-10%. Affected sector equities may underperform the broader market by 8-12%.",
+            "Geopolitical": f"Risk premium likely to remain elevated for 1-2 quarters — expect safe-haven flows into gold (+3-5%), USD (+2%), and short-duration Treasuries.",
+        }.get(theme, f"Market volatility expected to persist over the next 3-6 months. Monitor {country} assets closely for entry/exit signals as the situation develops."),
     )
 
 

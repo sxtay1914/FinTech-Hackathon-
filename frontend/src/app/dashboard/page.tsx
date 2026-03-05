@@ -1,9 +1,9 @@
-import { getEvents } from "@/lib/api";
-import { EventTable } from "@/components/event-table";
+import { getEvents, getThemes } from "@/lib/api";
 import { HeroGlobe } from "@/components/hero-globe";
+import { DashboardContent } from "@/components/dashboard-content";
 
 export default async function DashboardPage() {
-  const events = await getEvents();
+  const [events, themes] = await Promise.all([getEvents(), getThemes()]);
 
   return (
     <div>
@@ -22,7 +22,7 @@ export default async function DashboardPage() {
             {events.length} active events across global markets
           </p>
         </div>
-        <EventTable data={events} />
+        <DashboardContent events={events} themes={themes} />
       </div>
     </div>
   );

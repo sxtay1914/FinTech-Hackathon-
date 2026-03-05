@@ -9,7 +9,7 @@ import {
   type ColumnDef,
   flexRender,
 } from "@tanstack/react-table";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Table,
   TableBody,
@@ -100,12 +100,53 @@ const columns: ColumnDef<ActionItem>[] = [
   },
 ];
 
+const selectCls =
+  "h-8 rounded-md border border-border/60 bg-background px-2.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer";
+
 export function ActionTable({ data }: { data: ActionItem[] }) {
   const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [country, setCountry] = useState("");
+  const [theme, setTheme] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [minOpportunity, setMinOpportunity] = useState(0);
+  const [minPortfolio, setMinPortfolio] = useState(0);
+
+  const countries = useMemo(
+    () => Array.from(new Set(data.map((a) => a.event_country).filter(Boolean))).sort(),
+    [data]
+  );
+  const themes = useMemo(
+    () => Array.from(new Set(data.map((a) => a.event_theme).filter(Boolean))).sort(),
+    [data]
+  );
+
+  const filteredData = useMemo(() => {
+    return data.filter((a) => {
+      if (country && a.event_country !== country) return false;
+      if (theme && a.event_theme !== theme) return false;
+      if (dateFrom && a.event_published_date < dateFrom) return false;
+      if (dateTo && a.event_published_date > dateTo) return false;
+      if (minOpportunity && a.opportunity_impact < minOpportunity) return false;
+      if (minPortfolio && a.portfolio_impact < minPortfolio) return false;
+      return true;
+    });
+  }, [data, country, theme, dateFrom, dateTo, minOpportunity, minPortfolio]);
+
+  const hasFilters = !!(country || theme || dateFrom || dateTo || minOpportunity || minPortfolio);
+
+  const clearFilters = () => {
+    setCountry("");
+    setTheme("");
+    setDateFrom("");
+    setDateTo("");
+    setMinOpportunity(0);
+    setMinPortfolio(0);
+  };
 
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -115,6 +156,82 @@ export function ActionTable({ data }: { data: ActionItem[] }) {
 
   return (
     <div className="rounded-lg border border-border/50 bg-card">
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-border/50 px-4 py-3">
+        <select
+          value={country}
+          onChange={(e) => setCountry(e.target.value)}
+          className={selectCls}
+        >
+          <option value="">All Countries</option>
+          {countries.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+
+        <select
+          value={theme}
+          onChange={(e) => setTheme(e.target.value)}
+          className={selectCls}
+        >
+          <option value="">All Themes</option>
+          {themes.map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+
+        <input
+          type="date"
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+          className={selectCls + " w-36"}
+          title="From date"
+        />
+
+        <input
+          type="date"
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+          className={selectCls + " w-36"}
+          title="To date"
+        />
+
+        <select
+          value={minOpportunity}
+          onChange={(e) => setMinOpportunity(Number(e.target.value))}
+          className={selectCls}
+        >
+          <option value={0}>Opportunity ≥ any</option>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <option key={n} value={n}>Opportunity ≥ {n}</option>
+          ))}
+        </select>
+
+        <select
+          value={minPortfolio}
+          onChange={(e) => setMinPortfolio(Number(e.target.value))}
+          className={selectCls}
+        >
+          <option value={0}>Portfolio ≥ any</option>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <option key={n} value={n}>Portfolio ≥ {n}</option>
+          ))}
+        </select>
+
+        {hasFilters && (
+          <button
+            onClick={clearFilters}
+            className="h-8 rounded-md border border-border/60 bg-background px-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            Clear
+          </button>
+        )}
+
+        <span className="ml-auto text-xs text-muted-foreground">
+          {filteredData.length} of {data.length}
+        </span>
+      </div>
+
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -146,6 +263,13 @@ export function ActionTable({ data }: { data: ActionItem[] }) {
               ))}
             </TableRow>
           ))}
+          {table.getRowModel().rows.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={columns.length} className="py-8 text-center text-sm text-muted-foreground">
+                No actions match the selected filters.
+              </TableCell>
+            </TableRow>
+          )}
         </TableBody>
       </Table>
     </div>

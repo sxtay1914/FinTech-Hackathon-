@@ -24,6 +24,7 @@ class MacroEvent(Base):
     globe_connections_json = Column(Text, nullable=False, default="[]")
     globe_points_json = Column(Text, nullable=False, default="[]")
     historical_precedents_json = Column(Text, nullable=False, default="[]")
+    predicted_impact = Column(Text, nullable=False, default="")
     published_date = Column(String, nullable=False)
     source = Column(String, nullable=False)
 
@@ -64,3 +65,15 @@ class Action(Base):
     @property
     def event_headline(self) -> str:
         return self.event.headline if self.event else ""
+
+    @property
+    def event_country(self) -> str:
+        return self.event.country if self.event else ""
+
+    @property
+    def event_theme(self) -> str:
+        return self.event.theme if self.event else ""
+
+    @property
+    def event_published_date(self) -> str:
+        return self.event.published_date if self.event else ""

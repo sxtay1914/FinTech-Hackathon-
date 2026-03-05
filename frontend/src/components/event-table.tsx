@@ -9,7 +9,7 @@ import {
   type ColumnDef,
   flexRender,
 } from "@tanstack/react-table";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Table,
   TableBody,
@@ -66,12 +66,64 @@ const columns: ColumnDef<EventListItem>[] = [
   },
 ];
 
-export function EventTable({ data }: { data: EventListItem[] }) {
+const selectCls =
+  "h-8 rounded-md border border-border/60 bg-background px-2.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer";
+
+export function EventTable({
+  data,
+  themeFilter,
+  onThemeFilterClear,
+}: {
+  data: EventListItem[];
+  themeFilter?: string;
+  onThemeFilterClear?: () => void;
+}) {
   const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [country, setCountry] = useState("");
+  const [theme, setTheme] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [minOpportunity, setMinOpportunity] = useState(0);
+  const [minPortfolio, setMinPortfolio] = useState(0);
+
+  const countries = useMemo(
+    () => Array.from(new Set(data.map((e) => e.country))).sort(),
+    [data]
+  );
+  const themes = useMemo(
+    () => Array.from(new Set(data.map((e) => e.theme))).sort(),
+    [data]
+  );
+
+  // External themeFilter (from ThemeCloud) takes precedence over internal dropdown
+  const effectiveTheme = themeFilter ?? theme;
+
+  const filteredData = useMemo(() => {
+    return data.filter((e) => {
+      if (country && e.country !== country) return false;
+      if (effectiveTheme && e.theme !== effectiveTheme) return false;
+      if (dateFrom && e.published_date < dateFrom) return false;
+      if (dateTo && e.published_date > dateTo) return false;
+      if (minOpportunity && e.opportunity_impact < minOpportunity) return false;
+      if (minPortfolio && e.portfolio_impact < minPortfolio) return false;
+      return true;
+    });
+  }, [data, country, effectiveTheme, dateFrom, dateTo, minOpportunity, minPortfolio]);
+
+  const hasFilters = !!(country || theme || dateFrom || dateTo || minOpportunity || minPortfolio);
+
+  const clearFilters = () => {
+    setCountry("");
+    setTheme("");
+    setDateFrom("");
+    setDateTo("");
+    setMinOpportunity(0);
+    setMinPortfolio(0);
+  };
 
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -81,6 +133,97 @@ export function EventTable({ data }: { data: EventListItem[] }) {
 
   return (
     <div className="rounded-lg border border-border/50 bg-card">
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-border/50 px-4 py-3">
+        <select
+          value={country}
+          onChange={(e) => setCountry(e.target.value)}
+          className={selectCls}
+        >
+          <option value="">All Countries</option>
+          {countries.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+
+        {themeFilter ? (
+          <span className="flex h-8 items-center gap-1.5 rounded-md border border-border/60 bg-background px-2.5 text-xs text-foreground">
+            Theme: <span className="font-medium">{themeFilter}</span>
+            <button
+              onClick={() => { onThemeFilterClear?.(); }}
+              className="ml-1 text-muted-foreground hover:text-foreground"
+              title="Clear theme filter"
+            >
+              ✕
+            </button>
+          </span>
+        ) : (
+          <select
+            value={theme}
+            onChange={(e) => setTheme(e.target.value)}
+            className={selectCls}
+          >
+            <option value="">All Themes</option>
+            {themes.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        )}
+
+        <input
+          type="date"
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+          className={selectCls + " w-36"}
+          title="From date"
+          placeholder="From"
+        />
+
+        <input
+          type="date"
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+          className={selectCls + " w-36"}
+          title="To date"
+          placeholder="To"
+        />
+
+        <select
+          value={minOpportunity}
+          onChange={(e) => setMinOpportunity(Number(e.target.value))}
+          className={selectCls}
+        >
+          <option value={0}>Opportunity ≥ any</option>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <option key={n} value={n}>Opportunity ≥ {n}</option>
+          ))}
+        </select>
+
+        <select
+          value={minPortfolio}
+          onChange={(e) => setMinPortfolio(Number(e.target.value))}
+          className={selectCls}
+        >
+          <option value={0}>Portfolio ≥ any</option>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <option key={n} value={n}>Portfolio ≥ {n}</option>
+          ))}
+        </select>
+
+        {hasFilters && (
+          <button
+            onClick={clearFilters}
+            className="h-8 rounded-md border border-border/60 bg-background px-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            Clear
+          </button>
+        )}
+
+        <span className="ml-auto text-xs text-muted-foreground">
+          {filteredData.length} of {data.length}
+        </span>
+      </div>
+
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -112,6 +255,13 @@ export function EventTable({ data }: { data: EventListItem[] }) {
               ))}
             </TableRow>
           ))}
+          {table.getRowModel().rows.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={columns.length} className="py-8 text-center text-sm text-muted-foreground">
+                No events match the selected filters.
+              </TableCell>
+            </TableRow>
+          )}
         </TableBody>
       </Table>
     </div>

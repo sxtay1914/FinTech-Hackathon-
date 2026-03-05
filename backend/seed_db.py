@@ -45,6 +45,7 @@ def _insert_event(db, analysis, source: str, date: str):
         globe_connections_json=json.dumps([c.model_dump() for c in analysis.globe_connections]),
         globe_points_json=json.dumps([p.model_dump() for p in analysis.globe_points]),
         historical_precedents_json=json.dumps([h.model_dump() for h in analysis.historical_precedents]),
+        predicted_impact=analysis.predicted_impact,
         published_date=date,
         source=source,
     )
