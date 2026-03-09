@@ -11,8 +11,21 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Meridian API", version="1.0.0")
 
+import os, re
+
+_VERCEL_PATTERN = re.compile(r"https://.*\.vercel\.app$")
+
+def _is_allowed_origin(origin: str) -> bool:
+    if origin in ("http://localhost:3000", "http://127.0.0.1:3000"):
+        return True
+    if _VERCEL_PATTERN.match(origin):
+        return True
+    extra = os.getenv("ALLOWED_ORIGINS", "")
+    return origin in [o.strip() for o in extra.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
     allow_methods=["*"],
