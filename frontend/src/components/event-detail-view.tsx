@@ -60,6 +60,7 @@ export function EventDetailView({ event }: { event: EventDetail }) {
           precedents={event.historical_precedents}
           selected={selectedMemory}
           onSelect={handleMemoryClick}
+          onNow={handleCloseMemory}
           predictedImpact={event.predicted_impact}
         />
       </div>

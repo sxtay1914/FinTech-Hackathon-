@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \":*)",
+      "Bash(pip install sqlalchemy --quiet)",
+      "Bash(pip install -r backend/requirements.txt --quiet)",
+      "Bash(pip3 install sqlalchemy fastapi uvicorn --quiet)",
+      "Bash(python3 -m pip install sqlalchemy)",
+      "Bash(python3 -c \"import sqlalchemy; print\\(''ok''\\)\")",
+      "Bash(python3 -m pip install python-dotenv --quiet)"
+    ]
+  }
+}

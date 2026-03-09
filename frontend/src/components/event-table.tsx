@@ -9,7 +9,7 @@ import {
   type ColumnDef,
   flexRender,
 } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Table,
   TableBody,
@@ -80,6 +80,22 @@ export function EventTable({
 }) {
   const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent<{ id: number }>).detail.id;
+      setHighlightedId(id);
+      if (highlightTimer.current) clearTimeout(highlightTimer.current);
+      highlightTimer.current = setTimeout(() => setHighlightedId(null), 2000);
+      setTimeout(() => {
+        document.getElementById(`event-row-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 50);
+    };
+    window.addEventListener("meridian:focus-event", handler);
+    return () => window.removeEventListener("meridian:focus-event", handler);
+  }, []);
   const [country, setCountry] = useState("");
   const [theme, setTheme] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -245,8 +261,13 @@ export function EventTable({
           {table.getRowModel().rows.map((row) => (
             <TableRow
               key={row.id}
+              id={`event-row-${row.original.id}`}
               onClick={() => router.push(`/events/${row.original.id}`)}
-              className="cursor-pointer border-border/30 transition-colors hover:bg-muted/50"
+              className={`cursor-pointer border-border/30 transition-colors hover:bg-muted/50 ${
+                highlightedId === row.original.id
+                  ? "bg-emerald-500/10 ring-1 ring-inset ring-emerald-500/50"
+                  : ""
+              }`}
             >
               {row.getVisibleCells().map((cell) => (
                 <TableCell key={cell.id} className="py-3">

@@ -1,5 +1,5 @@
 import { getEvents, getThemes } from "@/lib/api";
-import { HeroGlobe } from "@/components/hero-globe";
+import { DashboardHero } from "@/components/dashboard-hero";
 import { DashboardContent } from "@/components/dashboard-content";
 
 export default async function DashboardPage() {
@@ -7,12 +7,7 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      {/* Globe banner */}
-      <div className="relative h-[280px] w-full overflow-hidden border-b border-border/40">
-        <HeroGlobe />
-        {/* Gradient overlay at bottom for smooth transition */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-background to-transparent" />
-      </div>
+      <DashboardHero events={events} />
 
       {/* Dashboard content */}
       <div className="mx-auto max-w-screen-2xl px-6 py-6">
