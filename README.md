@@ -2,6 +2,14 @@
 
 Global Macro Intelligence Platform — built for asset managers who need a unified view of macro events, their global impact, and actionable portfolio recommendations.
 
+Meridian is a global macro intelligence platform designed to help asset managers transform complex macro developments into clear, actionable portfolio insights. In today's environment, investors face an overwhelming volume of geopolitical events, economic releases, and policy signals that are difficult to translate into portfolio implications. Meridian addresses this challenge by connecting macro news, risk transmission across markets, historical precedents, and portfolio exposures within a single decision-support platform.
+
+The platform first ingests global macro news and detects emerging themes such as monetary policy shifts, inflation pressures, geopolitical tensions, or trade disruptions. It then maps how these events propagate through a risk chain, identifying potential impacts across countries, asset classes, and market sectors. Meridian compares current events with historical market precedents through its MarketMemory module, allowing asset managers to understand how similar macro shocks previously affected financial markets.
+
+To support faster decision-making, Meridian quantifies potential portfolio exposure through a macro stress testing engine, estimating potential drawdowns and risk concentrations. Based on this analysis, the platform generates actionable investment recommendations, such as hedging exposures, adjusting asset allocations, or increasing defensive positioning.
+
+By integrating macro intelligence, risk analysis, historical context, and portfolio guidance, Meridian enables asset managers to move from information overload to faster, more informed investment decisions.
+
 ![Stack](https://img.shields.io/badge/Next.js-black?style=flat&logo=next.js) ![Stack](https://img.shields.io/badge/FastAPI-009688?style=flat&logo=fastapi&logoColor=white) ![Stack](https://img.shields.io/badge/OpenAI-412991?style=flat&logo=openai&logoColor=white)
 
 ## What it does

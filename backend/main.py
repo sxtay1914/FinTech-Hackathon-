@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.database import engine, Base
-from backend.routers import events, actions, themes
+from backend.routers import events, actions, themes, portfolio
 
 Base.metadata.create_all(bind=engine)
 
@@ -23,6 +23,7 @@ app.add_middleware(
 app.include_router(events.router)
 app.include_router(actions.router)
 app.include_router(themes.router)
+app.include_router(portfolio.router)
 
 
 @app.get("/api/health")

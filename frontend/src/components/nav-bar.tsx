@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const links = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/actions", label: "Actions" },
+  { href: "/portfolio", label: "Portfolio" },
 ];
 
 export function NavBar() {
