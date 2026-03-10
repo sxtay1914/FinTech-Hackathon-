@@ -7,7 +7,8 @@
       "Bash(pip3 install sqlalchemy fastapi uvicorn --quiet)",
       "Bash(python3 -m pip install sqlalchemy)",
       "Bash(python3 -c \"import sqlalchemy; print\\(''ok''\\)\")",
-      "Bash(python3 -m pip install python-dotenv --quiet)"
+      "Bash(python3 -m pip install python-dotenv --quiet)",
+      "Bash(grep -E '\\\\.tsx$|\\\\.ts$')"
     ]
   }
 }

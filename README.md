@@ -17,6 +17,7 @@ By integrating macro intelligence, risk analysis, historical context, and portfo
 1. **News Dashboard** — Macro summary KPIs, Theme Pulse with momentum sparklines, Portfolio Stress Tester, and a sortable/filterable event table with globe markers colour-coded by heat
 2. **Event Detail** — Interactive 3D globe with impact arcs, risk chain analysis, AI-generated deep analysis, and MarketMemory — a timeline scrubber through historical precedents that rotates the globe to each event's location
 3. **Actions Dashboard** — Country impact globe (click to filter by country), AI-recommended portfolio actions with urgency, direction, and asset class — all sortable and filterable
+4. **Portfolio Intelligence** — Live fund screener with 90-day price chart and macro-aware insights, 3-month rolling asset correlation matrix, VADER sentiment analysis by theme, and a macro domino stress tester
 
 ## Architecture
 
@@ -26,11 +27,28 @@ By integrating macro intelligence, risk analysis, historical context, and portfo
 │   ├── llm_analyzer.py  GPT-4o-mini structured outputs via Pydantic
 │   ├── news_fetcher.py  Google News RSS (no API key needed)
 │   ├── seed_db.py     Parallel seeding (8 workers), fallback data
-│   └── routers/       /api/events, /api/actions, /api/themes
+│   └── routers/
+│       ├── events.py  /api/events, /api/events/{id}
+│       ├── actions.py /api/actions
+│       ├── themes.py  /api/themes
+│       └── portfolio.py  /api/screener, /api/correlation, /api/sentiment
 │
 ├── frontend/          Next.js 15 + React + Tailwind + shadcn/ui
-│   ├── src/app/       App Router pages (splash, dashboard, events/[id], actions)
-│   ├── src/components/ Globe views, tables, sidebar, MarketMemory, stress tester
+│   ├── src/app/
+│   │   ├── page.tsx              Splash screen
+│   │   ├── dashboard/page.tsx    News Dashboard
+│   │   ├── events/[id]/page.tsx  Event Detail
+│   │   ├── actions/page.tsx      Actions Dashboard
+│   │   └── portfolio/page.tsx    Portfolio Intelligence
+│   ├── src/components/
+│   │   ├── globe-view.tsx        Main interactive globe (sun lighting, arcs, free spin)
+│   │   ├── hero-globe.tsx        Banner globe (auto-rotate only)
+│   │   ├── event-detail-view.tsx State manager for sidebar/globe/MarketMemory
+│   │   ├── market-memory.tsx     Historical precedent timeline scrubber
+│   │   ├── memory-detail.tsx     Precedent detail with chart
+│   │   ├── dashboard-content.tsx Dashboard state + theme filter
+│   │   ├── nav-bar.tsx           Top nav (Dashboard / Actions / Portfolio)
+│   │   └── portfolio-view.tsx    Portfolio Intelligence — screener, correlation, sentiment, stress test
 │   └── src/lib/       API client, types, utils
 │
 └── scripts/dev.sh     Start both servers
@@ -111,6 +129,9 @@ bash scripts/dev.sh
 | `GET /api/events/{id}` | Full event detail with globe data, analysis, precedents |
 | `GET /api/actions` | All recommended actions |
 | `GET /api/themes` | Aggregated theme overview (heat, avg impacts, event count) |
+| `GET /api/screener?q={ticker}` | Live stock data — price, fundamentals, 90-day chart, returns |
+| `GET /api/correlation?tickers={list}` | 3-month rolling correlation matrix for given tickers |
+| `GET /api/sentiment` | VADER sentiment scores across all macro events, grouped by theme |
 | `POST /api/refresh` | Re-fetch live news + re-analyze (async) |
 | `GET /api/refresh/status` | Check if refresh is in progress |
 | `GET /api/health` | Health check |
@@ -132,6 +153,9 @@ bash scripts/dev.sh
 - **Sort & Filter** — Both the event table and actions table support sorting by any column + filtering by country, theme, date range, min opportunity impact, and min portfolio impact
 - **3D Globe** (react-globe.gl) — Sun-lit based on real UTC time on event detail, free-spin interaction, animated arcs between impacted regions
 - **Context-aware connections** — Globe arcs point to genuinely relevant financial centers based on article content
+- **Fund Screener** — Search any ticker via yfinance; returns live price, market cap, P/E, beta, dividend yield, 52W range, 1d/1w/1m/1y returns, 90-day sparkline chart, and 5 macro-aware AI insights drawn from live events
+- **Asset Correlation Matrix** — 3-month rolling correlation table for a configurable basket of tickers, colour-coded from red (−1) to green (+1)
+- **VADER Sentiment Analysis** — Aggregates sentiment scores across all seeded macro event headlines and summaries, displayed as per-theme horizontal bars
 - **Splash screen** — Cinematic "Meridian" fade-in, auto-navigates to dashboard after 4.2s
 - **Dark theme** — Bloomberg terminal aesthetic with zinc palette + emerald accents
 
@@ -143,5 +167,7 @@ bash scripts/dev.sh
 - **Parallel seeding** — `ThreadPoolExecutor(max_workers=8)` for concurrent LLM calls
 - **Google News RSS** — No API key needed, 9 macro-focused query topics, deduplication by title
 - **Fallback data** — 25 hardcoded articles with pre-built analysis when no OpenAI key is available
+- **yfinance integration** — Real-time equity data with no API key; used for screener price history and correlation matrix
+- **VADER sentiment** — Rule-based NLP sentiment scoring; no model inference cost, runs fully offline
 - **Event delegation for globe clicks** — react-globe.gl's HTML overlay has `pointer-events: none`; solved with CSS override + `closest("[data-event-id]")` delegation on the container
 - **Cross-component communication** — Globe → EventTable communication via `window.dispatchEvent(new CustomEvent("meridian:focus-event"))`, avoiding prop drilling through server components
